@@ -1,0 +1,604 @@
+%% Based on a TeXnicCenter-Template by Tino Weinkauf.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% HEADER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass{article}
+
+%% Packages for Graphics & Figures %%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{graphicx} %%For loading graphic files
+%\usepackage{subfig} %%Subfigures inside a figure
+%\usepackage{tikz} %%Generate vector graphics from within LaTeX
+
+%% Please note:
+%% Images can be included using \includegraphics{filename}
+%% resp. using the dialog in the Insert menu.
+%% 
+%% The mode "LaTeX => PDF" allows the following formats:
+%%   .jpg  .png  .pdf  .mps
+%% 
+%% The modes "LaTeX => DVI", "LaTeX => PS" und "LaTeX => PS => PDF"
+%% allow the following formats:
+%%   .eps  .ps  .bmp  .pict  .pntg
+
+
+%% Math Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{color}
+\usepackage{listings}
+\lstset{language=C++}
+\usepackage{lscape} 
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\newtheorem*{remark}{Remark}
+%\usepackage{landscape}
+\usepackage{xspace}
+\usepackage{color}
+\textwidth = 450pt
+\def\fxnote#1{\marginpar{\textcolor{green}{#1}}}
+\def\fxwarning#1{\marginpar{\textcolor{red}{#1}}}
+\usepackage[a4paper]{geometry}
+%% Line Spacing %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{setspace}
+%\singlespacing        %% 1-spacing (default)
+%\onehalfspacing       %% 1,5-spacing
+%\doublespacing        %% 2-spacing
+
+
+%% Other Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{a4wide} %%Smaller margins = more text per page.
+%\usepackage{fancyhdr} %%Fancy headings
+%\usepackage{longtable} %%For tables, that exceed one page
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Remarks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% TODO:
+% 1. Edit the used packages and their options (see above).
+% 2. If you want, add a BibTeX-File to the project
+%    (e.g., 'literature.bib').
+% 3. Happy TeXing!
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Options / Modifications
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% common reference commands
+\newcommand{\eqt}[1]{Eq.~(\ref{#1})}                     % equation
+\newcommand{\fig}[1]{Fig.~\ref{#1}}                      % figure
+\newcommand{\tbl}[1]{Table~\ref{#1}}                     % table
+\newcommand{\sect}[1]{Section~\ref{#1}}                     % section
+\newcommand{\subsect}[1]{Subsection~\ref{#1}}                     % subsection
+\newcommand{\app}[1]{Appendix~\ref{#1}}                     % appendix
+
+\newcommand{\ie}{i.e.,\@\xspace}
+\newcommand{\eg}{e.g.,\@\xspace}
+\newcommand{\psc}[1]{{\sc {#1}}}
+\newcommand{\rs}{\psc{R7}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% DOCUMENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%\pagestyle{empty} %No headings for the first pages.
+
+
+%% Title Page %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ==> Write your text here or include other files.
+
+%% The simple version:
+\title{The entropy-based viscosity method: extension to the low Mach limit and to the seven equations model.}
+\author{Marc-Olivier Delchini\footnote{Nuclear Engineering Department 
+Texas A\&M University 3133 TAMU College Station, TX 77843-3133, delchinm@neo.tamu.edu}}
+%\date{} %%If commented, the current date is used.
+\maketitle
+\marginparwidth = 10pt
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:section1}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Because hyperbolic systems of equations are encountered in various engineering fields (extraction of oil, turbine technology, nuclear reactors, etc $\dots$), they have been the center of intensive researches for many years. This is particularly true for fluid equations. Being able to accurately solve and predict the behavior of a fluid in a turbine or in a reactor, for example, can lead to a decrease in safety margins, automatically resulting in a decrease in production cost. Thus, we can see the importance of having a good understanding of the mathematical theory behind these wave-dominated systems of equations, and also, the importance of developing robust and accurate numerical methods. However, this task is far from being simple.\\
+A tremendous number of theoretical study has shown the role played by characteristic equations and the corresponding eigenvalues, on how and at what speed the physical information propagates: physical shocks or discontinuities can form, leading to unphysical instabilities and oscillations that pollute the numerical solution due to entropy production \cite{Toro}. Thus, a question rises: how to accurately resolve shocks and conserve the physical solution at the same time? A lot of work is available in the literature and include Riemann solvers, Godunov-type fluxes, flux limiter and artificial viscosity methods. Toro's book \cite{Toro} gives a good overview of the theory related to the hyperbolic system of equations and focuses on Riemann solver and Godunov-type fluxes that can be used with discontinuous schemes: finite volume (FV) and discontinuous Galerkin finite element method (CGFEM).
+%offers a good introduction to the theory related to the hyperbolic system of equations and gives some examples of numerical methods that were developed such as Riemann solver or Godunov type flux in multi-D, and are used with discontinuous schemes (Finite Volume (FV) and Discontinuous Galerkin Finite Element Method (DGFEM)). 
+Flux limiters \cite{FluxLimiter1, FluxLimiter3} have gained great interest since they were known to achieve high-order accuracy with DGFEM \cite{FluxLimiter2} but suffer from some drawbacks: difficulties were found to reach steady-state solution when using time-stepping schemes and generalization to unstructured grid is not obvious. The artificial viscosity method was first introduced by Neumann and Richtmeyer \cite{Neumann} but was found over-dissipative and, thus, abandoned. It is only later with the development of high-order schemes and because of their simple implementation that they have regained interests: Lapidus \cite{Lapidus_paper, Lapidus_book} developed a high-order viscosity method by making the viscosity coefficient proportional to the gradient of the velocity in 1-D. Lohner et al. \cite{LMP} extended this concept to multi-dimension by introducing a vector that will measure the direction of maximum change in the absolute value of the velocity norm, so that shear layers do not get smeared. Some pressure based-viscosities were also studied \cite{PBV_book}: the viscosity coefficient is set proportional to the Laplace of pressure allowing to detect change of curvature in the pressure profile. Since the pressure is nearly constant in all waves but shocks, it is a good indicator of the presence of a shock. \\
+More recently, a new generation of artificial viscosity method appeared. Reisner et al. \cite{Reisner} introduced the C-method for the compressible Euler equations with artificial dissipative terms: instead of computing the viscosity coefficient on the fly as for Lapidus and pressure-based method, a partial differential equation (PDE) is added to the original system of equations. This extra PDE allows to solve for the viscosity coefficient and has a source term function of the gradient of velocity. The method seems to give good results in 1-D for a wide range of tests.\\  
+Guermond et .al \cite{jlg1, jlg2, jlg3} proposed an entropy-based viscosity method for conservative hyperbolic system of equations: artificial dissipative terms are added to the system of equations with a viscosity coefficient modulated by the entropy production that is known to be large in shocks and small anywhere else. The method was successfully applied in various schemes \cite{jlg2, jlg3, valentin} and showed high-order convergence with smooth solution. Results using the ideal gas equation of state were run for 1-D Sod tube and showed good agreement with the exact solutions. 2-D tests were also performed on unstructured grids and behaved well \cite{valentin}. The method is fairly simple to implement and is consistent with the entropy inequality.\\
+The objective of this research is to solve for hyperbolic system of equations using a continuous Galerkin finite element method and an implicit temporal discretization under the Moose framework \cite{Moose}. We are particularly interested in simulating the thermodynamics occurring in nuclear reactors. The set of equations that will be considered are the multi-D Euler equations with variable area \cite{Toro} and the multi-D seven equations model \cite{SEM}. All of these system of equations are well defined in a sense that they have real eigenvalues. To numerically solve these equations, we need to rely on a numerical method that will allow us to resolve shocks and discontinuity that may form. More importantly, we need a method that is accurate for a wide range of Mach number and is not restrictive to any type of equation of state. These previous requirements can be hard to fulfill. For example, most of the numerical methods are tested with the ideal gas equation of state which can not be used for liquid phase. The difficulty rises once a numerical method used for resolving shocks, is required to work for low Mach flows that are isentropic: in this particular case, a compressible model is used to simulate a flow in the incompressible limit. Recent publications \cite{LowMach1, LowMach2} highlighted the difficulties related to such a choice: asymptotic studies have shown that some of the numerical methods get ill-scaled in the low Mach limit, making the numerical solution unphysical. For example, the Roe scheme requires a fix in the low Mach limit while conserving its accuracy when shocks occur \cite{Roe}. \\
+We propose to use the entropy-based viscosity method introduced by Guermond et al. to solve for the hyperbolic systems previously enumerated since the method has shown good results when used for solving the multi-D Euler equations on various schemes. More importantly, it is simple to implement, can be used with un-structured grids and the dissipative terms are consistent with the entropy inequality and proven valid for any equation of state under certain conditions \cite{jlg}. However a few questions holds: the low Mach limit has never been investigated and the current definition requires an analytical expression of the entropy which can be difficult to obtain for some equation of state. These two issues will have to be addressed. A particular attention will be brought to the low Mach problem and the available literature related to the asymptotic limit of the Navier-Stokes \cite{Muller} and Euler equations \cite{LowMach1, LowMach2} will be of great help in order to understand how the dissipative terms behave. \\
+As a side project, it is also proposed to investigate how the entropy-based viscosity method can be applied to the multi-D radiation-hydrodynamic equations \cite{LowrieMorelHittinger}. These equations are known to develop solutions with shocks \cite{Balsara}. They consist of coupling the multi-D Euler equations with a radiation-diffusion equations through some source terms.  Most of the current solvers are based on the study of the hyperbolic terms in order to derive a Riemann-type solver \cite{LowrieMorel}. Flux-limiter technique \cite{EdwardsMorelLowrie} are also used and suffer from the same drawbacks as for the pure multi-D Euler equations. Therefore, it will be interested to see how the entropy-based viscosity method can adapt to this multi-physics system, and if successful, will offer an alternative to the current available numerical methods.\\
+Thus, the proposal is organized as follows: Section 1 will recall the main feature of the current version of the entropy-based viscosity method. Section 2 will introduce the system of equations under considerations. Short description of the equations and their properties will be given. In Section 3, the problem formulation is discussed for each system of equations, and suggestions of test cases are given in order to test the numerical method.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \section{The entropy-based viscosity method as it states:}
+ \label{sec:section2}
+In this section, the entropy-based viscosity method \cite{jlg1, jlg2, jlg3} is recalled for the multi-D Euler equations (with constant area $A$) \cite{valentin}. As mentioned earlier in \sect{sec:section1} the entropy-based viscosity method consists of adding dissipative terms, with a viscosity coefficient modulated by the entropy production which allows high-order accuracy when the solution gets smooth. Thus two questions raise: (i) how are the viscosity dissipative terms derived and (ii) how to numerically compute the entropy production. Answers to the first question can be found in \cite{jlg} by Guermond et al., that details the proof leading to the derivation of the artificial dissipative terms (\eqt{eq:euler_visc}) consistent with the entropy minimum principle theorem. The viscous regularization obtained, is valid for any equation of state as long as the opposite of the physical entropy function is convex.
+\begin{equation}
+\label{eq:euler_visc}
+\left\{ 
+\begin{array}{lll}
+\partial_t \left( \rho \right) + \nabla \cdot \left( \rho \vec{u} \right) = \nabla \cdot \left( \kappa \nabla \rho \right) \\
+\partial_t \left( \rho \vec{u} \right) + \nabla \cdot \left( \rho \vec{u} \otimes \vec{u} + P I \right) = \nabla \left( \mu \rho \nabla \vec{u}  + \kappa \vec{u} \otimes \nabla \rho \right)  \\
+\partial_t \left( \rho E \right) + \nabla \cdot \left[ \vec{u} \left( \rho E + P \right) \right] = \nabla \cdot \left( \kappa \nabla \left( \rho e \right) + \frac{1}{2}|| \vec{u} ||^2 \kappa \nabla \rho +  \rho \vec{u} \mu \nabla \vec{u}  \right) \\
+P = P\left( \rho, e \right)
+\end{array}
+\right.
+\end{equation}
+where $\kappa$ and $\mu$ are local positive viscosity coefficients. \\
+It was assumed the existence of a specific entropy $s$, function of the density $\rho$ and the internal energy $e$. Convexity of $-s$ with respect to $e$ and $1/\rho$ is required, along with the following equality verified by the partial derivatives of $s$ : $P \partial_e s + \rho^2 \partial_{\rho} s = 0$.\\
+It remains a crucial step, that is finding a definition for the local viscosity coefficients $\mu$ and $\kappa$. In the current version of the method, $\kappa$ and $\mu$ are set equal, so that the above viscous regularization (\eqt{eq:euler_visc}) is equivalent to the parabolic regularization \cite{Parabolic}. The current definition includes a first-order viscosity coefficient referred to with the subscript $max$, and a second-order viscosity coefficient referred to with the subscript $e$. The first-order viscosity coefficients $\mu_{max}$ and $\kappa_{max}$ are proportional to the local largest eigenvalue $|| \vec{u} || + c $ and equivalent to an upwind-scheme, when used, which is known to be over-dissipative and monotone \cite{Toro}: 
+\begin{equation}
+\mu_{max}(\vec{r}, t) = \kappa_{max}(\vec{r}, t) = \frac{h}{2} \left( || \vec{u} || + c \right),
+\end{equation}
+where $h$ is the grid size. \\
+The second-order viscosity coefficients $\kappa_e$ and $\mu_e$ are set proportional to the entropy production that is evaluated by computing the local entropy residual $D_e$. It also includes the jump of the entropy flux $J$ that will allow to detect any discontinuities other than shocks:
+\begin{equation}
+\label{eq:ent_visc_coeff}
+\mu_e(\vec{r},t) = \kappa_e(\vec{r},t) = h^2 \frac{\max\left( | D_e(\vec{r},t) |, J \right)}{|| s - \bar{s} ||_{max}} \text{ with } D_e(\vec{r}, t) = \partial_t s + \vec{u} \cdot \nabla s
+\end{equation}
+where $|| \cdot ||_{max}$ and $\bar{\cdot}$ denote the infinite norm operator and the average operator over the entire computational domain, respectively. The definition of the jump $J$ is discretization dependent and examples of definition can be found in \cite{valentin} for DGFEM. The denominator $|| s - \bar{s} ||_{max}$ is used for dimensionally purpose and should not be of the same order as $h$, on penalty of loosing the high-order accuracy. There is currently no other theoretical justification for choosing such a denominator. \\
+The definition of the viscosity coefficients $\mu$ and $\kappa$ is function of the first- and second-order viscosity coefficients as follows:
+\begin{equation}
+\mu(\vec{r},t) = \min\left( \mu_e(\vec{r},t), \mu_{max}(\vec{r},t) \right) \text{ and } \kappa(\vec{r},t) = \min\left( \kappa_e(\vec{r},t), \kappa_{max}(\vec{r},t) \right);
+\end{equation}
+This definition allows the following properties.
+In the shock region, the second-order viscosity coefficient experiences an infinite peak because of the entropy production, and thus, saturate to the first-order viscosity that is known to be over-dissipative and will smooth out oscillations. Anywhere else, the entropy production being small, the viscosity coefficients $\mu$ and $\kappa$ are of order $h^2$.\\
+Using the above definition of the entropy-based viscosity method, high-order accuracy was demonstrated and good results were obtained with 1-D Sod shock tubes and various 2-D tests \cite{jlg1, jlg2, valentin}.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Physical model and discretization:}
+\label{sec:section3}
+This section focuses on the presentation of the system of equations of interests for this proposal: the multi-D Euler equations with variable area, the multi-D seven equations model and the multi-D radiation-hydrodynamic equations. These three systems are all derived from or related to the regular multi-D Euler equations, which make them good candidates for the application of the entropy-based viscosity method. \\
+After presenting the equations and defining the variables of interest, the eigenvalues will be recalled along with an entropy conservation equation, that are the bases of the method, for each system.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The multi-D Euler equations with variable area:}
+\label{subsec:euler}
+The multi-D Euler equations with variable area are based on three conservation statements: mass, momentum and energy balances. When using the conservative variables, the density, the momentum and the total energy, the equations with variable area are expressed as follows:
+\begin{equation}
+\label{eq:euler1}
+\left\{ 
+\begin{array}{lll}
+\partial_t \left( \rho A \right) + \nabla \cdot \left( \rho \vec{u} A \right) = 0 \\
+\partial_t \left( \rho \vec{u} A \right) + \nabla \cdot \left( \rho \vec{u} \otimes \vec{u} + P I \right) = P \nabla A  \\
+\partial_t \left( \rho E \right) + \nabla \cdot \left[ \vec{u} \left( \rho E + P \right) A \right] = 0 \\
+P = P\left( \rho, e \right)
+\end{array}
+\right.
+\end{equation}
+where $\rho$, $\rho \vec{u}$ and $\rho E$ are the fluid density, the momentum and the total energy, respectively. The area $A$ is only spatial-dependent. The symbol $\partial_t$, $\nabla \cdot$ and $\nabla$ denote the temporal derivative, the differential operator divergence and gradient, respectively. It remains to define the pressure $P(\rho, e)$ that is computed from an equation of state, $e$ being the specific internal energy: $e = E - \frac{|| \vec{u} ||}{2}$. Three equations of state will be considered and given in \eqt{eq:eos}: the ideal gas equation of state \cite{IGEOS}, the stiffened gas equation of state \cite{SGEOS} and the Tait equation of state \cite{Tait}.
+\begin{equation}
+\label{eq:eos}
+\left\{
+\begin{array}{lll}
+\text{Ideal Gas Equation Of State (IGEOS): } P = \left( \gamma-1 \right) \rho e\\
+\text{Stiffened Gas Equation Of State (SGEOS): } P = \left( \gamma-1 \right) \rho \left( e - q \right) - \gamma P_{\infty} \\
+\text{Tait Equation Of State (TEOS): } P = P_0 \left( 1 - \frac{\rho}{\rho_0} \right)^{\frac{\gamma-1}{\gamma}} 
+\end{array}
+\right.
+\nonumber
+\end{equation}
+where $\gamma$ is the heat ratio, $q$, $P_{\infty}$, $P_0$ and $\rho_0$ are fluid-dependent parameters. The IGEOS can be easily derived from the SGEOS by setting the parameters $q$ and $P_{\infty}$ to zero. The SGEOS is usually used to simulate the behavior of liquid and gas phases under high-pressure, such as liquid water and steam in Boiling and Pressure Water Reactors. The TEOS is an isentropic version of the SGEOS \cite{Toro}. \\
+\eqt{eq:euler1} has $2+D$ eigenvalues where $D$ is the dimension. Steps leading to the derivation of the eigenvalues can be found in \cite{Toro}:
+\begin{equation}
+\left\{
+\begin{array}{lll}
+\lambda_1 = \vec{u} \cdot \vec{n} + c \\
+\lambda_{2,D} = \vec{u} \cdot \vec{n} \\
+\lambda_3 = \vec{u} \cdot \vec{n} - c 
+\end{array}
+\right.
+\end{equation}
+where $c$ is the speed of sound and $\vec{n}$ is a direction. \\
+The corresponding entropy conservation equations is the following:
+\begin{equation}
+\label{eq:ent}
+\frac{ds}{dt} = \partial_t s + \vec{u} \cdot \nabla s \geq 0,
+\end{equation}
+where $s$ is function of the density $\rho$ and the internal energy $e$. The above inequality is valid for any equation of state.\\
+In real life simulation, source terms are added to \eqt{eq:euler1}. When simulating the 1-D Euler equation in nuclear reactor, for example, wall friction and wall heat source/sink can be accounted for as shown in \eqt{eq:euler2}. 
+\begin{equation}
+\label{eq:euler2}
+\left\{ 
+\begin{array}{lll}
+\partial_t \left( \rho A \right) + \partial_x \left( \rho u A \right) = 0 \\
+\partial_t \left( \rho \vec{u} A \right) + \partial_x \left( \rho u^2 + P \right) = P \partial_x A - \frac{f}{2 D_h} u^2  \\
+\partial_t \left( \rho E \right) + \partial_x \left[ u \left( \rho E + P \right) A \right] = h A \left( T_w - T \right) \\
+P = P\left( \rho, e \right)
+\end{array}
+\right.
+\end{equation}
+where $f$ and $D_h$ are the friction coefficient and the hydraulic diameter, respectively. The heat transfer coefficient $h$ and the friction coefficient are function of the fluid property and computed from correlations. The parameter $T_w$ is the wall temperature. The fluid temperature $T$ is computed from the equation of state. \\
+These source terms will have an effect on the physics and will also modify the entropy conservation equation \eqt{eq:ent} by adding extra terms in the right-hand side.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The multi-D seven equation model:}
+\label{subsec:seven}
+The seven equations model was first introduced by Berry et al. \cite{SEM}. It is based on a key assumption that each phase obeys the multi-D Euler equations. This system is well-posed and has real eigenvalues which is a requirement for having an entropy condition. The exchange terms between phases were derived using rational thermodynamic \cite{RatTherm} to ensure consistency with the second law of thermodynamic \cite{IGEOS}. A void fraction equation is added in order to solve for the void fraction of each phase. When considering two phases $j$ and $k$, the phase $k$ obeys to the following set of equations: 
+\begin{equation}
+\label{eq:sev_equ}
+\left\{
+\begin{array}{llll}
+\partial_t \alpha_k + \vec{u_I} \nabla \alpha_k = 0 \\
+\partial_t \left( \alpha_k \rho_k\right) + \nabla \cdot \left( \alpha_k \rho_k \vec{u_k} \right) = 0 \\
+\partial_t \left( \alpha_k \rho_k \vec{u_k} \right) + \nabla \cdot \left[ \alpha_k \left( \rho_k \vec{u_k} \otimes \vec{u_k} + P_k I \right) \right] = P_I \nabla \alpha_k +\lambda \left( \vec{u}_j - \vec{u}_k \right) \\
+\partial_t \left( \alpha_k \rho_k E_k \right) + \nabla \cdot \left[ \alpha_k \vec{u}_k \left( \rho_k E_k + P_k \right) \right] = P_I u_I \nabla \alpha_k - \mu \bar{P_I} \left( P_k-P_j \right) + \bar{u_I} \lambda \left( \vec{u}_j - \vec{u}_k \right)
+\end{array}
+\right.
+\end{equation}
+where $Z_k = \rho_k c_k$ and $Z_j = \rho_j c_j$ are the impedance of the phase $k$ and $j$, respectively. The speed of sound is denoted by the variable $c$. The parameters $\mu$ and $\lambda$ are named pressure and velocity relaxation parameters, respectively, and a possible expression is given in \eqt{eq:sev_equ2}. They denote how fast energy and momentum are exchanged between phases.
+\begin{equation}
+\label{eq:sev_equ2}
+\mu = \frac{A_{int}}{Z_k + Z_j} \text{ and } \lambda = \frac{\mu Z_k Z_j}{2} \text{ with } A_{int} = A_{int, max} \alpha_k \left( 1 - \alpha_k \right)
+\end{equation}
+The parameter $A_{int,max}$ is positive and varies from $0$ to $\infty$ depending on the type of flow: bubble, slug, churn, ect $\dots$. \\
+The interfacial pressure $P_I$ and velocity $\vec{u_I}$ are defined as follows:
+\begin{equation}
+\label{eq:sev_equ3}
+\left\{
+\begin{array}{lll}
+P_I = \bar{P_I} - sgn\left( \nabla \alpha_k \right) \frac{Z_k Z_j}{Z_k + Z_j} \left( \vec{u}_k-\vec{u}_j \right) \text{ with }
+\bar{P_I} = \frac{Z_k P_j + Z_j P_k}{Z_k + Z_j} \\
+\vec{u}_I = \vec{\bar{u}}_I - sgn\left( \nabla \alpha_k \right) \frac{P_k - P_j}{Z_k + Z_j} \text{ with }
+\vec{\bar{u}}_I = \frac{Z_k \vec{u} _k + Z_j \vec{u}_j}{Z_k + Z_j}
+\end{array}
+\right.
+\end{equation}
+where the function $sgn(x)$ returns the sign of the variable $x$. \\
+The same set of equations can be obtained for the phase $j$ by simply substituting the subscript $k$ by $j$ and $j$ by $k$ in \eqt{eq:sev_equ}. The definitions of the interfacial variables $P_I$ and $\vec{u}_I$, and the relaxation parameters $\mu$ and $\lambda$, remains the same. \\
+The relaxation terms will regulate the difference of pressure and velocity between the phases $j$ and $k$. When $A_{int,max}$ goes to zero, the relaxation terms are neglected and do not affect the equations. On the other hand, assuming that $A_{int,max}$ goes to $\infty$, the phases are in equilibrium so that the pressure and velocity are equal. \\
+\eqt{eq:sev_equ} admits $p(2+D)+1$ real eigenvalues where $D=\{ 1,2,3 \}$ and $p = \{j,k\}$ are the dimension and the number of phases, respectively:
+\begin{equation}
+\left\{
+\begin{array}{llll}
+\lambda_1 = \vec{u}_I \\
+\lambda_{2,p} = \vec{u}_p \cdot \vec{n} - c_p \\
+\lambda_{3,D.p} = \vec{u}_p \cdot \vec{n} \\ 
+\lambda_{4,p} = \vec{u}_p \cdot \vec{n}+c_p   
+\end{array}
+\right.
+\end{equation}
+The corresponding entropy conservation equation is the following:
+\begin{eqnarray}
+\label{eq:sev_equ4}
+\rho_k A \left( \partial_t s_k + u_k \partial_x s_k \right) = \frac{Z_j}{Z_j+Z_k} \lambda \left( u_k - u_j \right)^2 + \frac{Z_k}{Z_j+Z_k} \mu \left( P_k-P_j \right)^2 + \nonumber \\ 
+\frac{Z_k}{Z_j+Z_k} \left| \partial_x \alpha \right| \left[ Z_j \left( u_k-u_j \right) +sgn\left( \partial_x \alpha \right) \left( P_k-P_j \right) \right]^2,
+\end{eqnarray}
+where once again, the entropy $s_k$ is assumed to be function of the phase density $\rho_k$ and the phase internal energy $e_k$. The right hand side of \eqt{eq:sev_equ4} only contains positive terms which ensures positivity of the entropy through the entropy minimum principle theorem. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The multi-D grey radiation-hydrodynamic equations:}
+\label{subsec:grey}
+The multi-D grey radiation-hydrodynamic equations (\eqt{eq:rad-hydro} results from the coupling between the radiation diffusion equation obtained from the transport equation in the diffusion limit \cite{EdwardsMorelKnoll}, and the multi-D Euler equations. It is not a hyperbolic system of equations because of the diffusion term $ \nabla \left( \frac{c}{3 \sigma_t} \nabla \epsilon \right)$ in the radiation density energy equation.
+\begin{equation}
+\label{eq:rad-hydro}
+\left\{
+\begin{array}{lll}
+\partial_t \left( \rho \right) + \nabla \left( \rho \vec{u} \right) = 0 \\
+\partial_t \left( \rho u\right) + \nabla \left(\rho \vec{u} \otimes \vec{u} + P + \frac{\epsilon}{3} \right) = 0 \\
+\partial_t \left( \rho E\right) + \nabla \left[ \vec{u} \left( \rho E + P \right) \right] = -\frac{\vec{u}}{3} \nabla \epsilon - \sigma_a c_l \left( a T^4 - \epsilon \right) \\
+\partial_t \epsilon + \frac{4}{3} \nabla \left( \vec{u} \epsilon \right) = \frac{\vec{u}}{3} \nabla \epsilon + \nabla \left( \frac{c}{3 \sigma_t} \nabla \epsilon \right) + \sigma_a c_l \left( a T^4 - \epsilon \right)
+\end{array}
+\right. ,
+\end{equation}
+where $\rho$, $u$, $E$, $\epsilon$, $P$ and $T$ are the material density, material velocity, material specific total energy, the radiation energy density, material pressure and temperature, respectively. The total and absorption cross-sections, $\sigma_t$ and $\sigma_a$, are temperature-dependent. The variables $a$ and $c_l$ are the Boltzman constant and the speed of light, respectively. \\
+Only momentum and energy are exchanged between the material and the particles field through the relaxation terms $\sigma_a c_l \left( a T^4 - \epsilon \right)$. Mass is not exchanged since the photons have a zero mass by definition.  
+The total energy ($\rho E + \epsilon$) is conserved: this is easely observed by summing the material energy equation and the radiation energy density equation.\\
+Even if \eqt{eq:rad-hydro} is not a hyperbolic system of equations, it is still a wave-dominated problem, and most of the numerical method used today \cite{LowrieMorel} rely on the study of the hyperbolic terms: the source terms and the diffusion term are removed as shown in \eqt{eq:rad-hydro-hyp}. 
+\begin{equation}
+\label{eq:rad-hydro-hyp}
+\left\{
+\begin{array}{lll}
+\partial_t \left( \rho \right) + \nabla \left( \rho \vec{u} \right) = 0 \\
+\partial_t \left( \rho u\right) + \nabla \left(\rho \vec{u} \otimes \vec{u} + P + \frac{\epsilon}{3} \right) = 0 \\
+\partial_t \left( \rho E\right) + \nabla \left[ \vec{u} \left( \rho E + P \right) \right] + \frac{\vec{u}}{3} \nabla \epsilon = 0 \\
+\partial_t \epsilon + \frac{4}{3} \nabla \left( \vec{u} \epsilon \right) - \frac{\vec{u}}{3} \nabla \epsilon = 0
+\end{array}
+\right. ,
+\end{equation}
+From \eqt{eq:rad-hydro-hyp}, the eigenvalues and an entropy conservation equation can be derived. The eigenvalues are the following:
+\begin{equation}
+\left\{
+\begin{array}{llll}
+\lambda_{1} = \vec{u} \cdot \vec{n} + c \\
+\lambda_{2,D} = \vec{u} \cdot \vec{n} \\ 
+\lambda_{3} = \vec{u} \cdot \vec{n} \\ 
+\lambda_{4} = \vec{u} \cdot \vec{n}-c   
+\end{array}
+\right. , \nonumber
+\end{equation}
+where $c$ is the material speed of sound, $\vec{u}$ is the material velocity vector, and $\vec{n}$ is a direction vector. \\
+The entropy conservation equation can be obtained by combination of the equations in \eqt{eq:rad-hydro-hyp} and assuming that the entropy $s$ is function of the density $\rho$, the internal energy $e$ and the radiation energy density $\epsilon$:
+\begin{equation}
+\frac{ds}{dt} = \partial_t s + \vec{u} \cdot \nabla s \geq 0
+\end{equation}
+From the inequality above, positivity of the entropy follows, using the entropy minimum principle theorem.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The continuous Galerkin finite element method:}
+The system of equations presented in \sect{subsec:euler}, \sect{subsec:seven} and \sect{subsec:grey} will be all discretized using the continuous finite element method provided by the Moose framework \cite{Moose}. The above system of equation can all be expressed under the following form:
+\begin{equation}
+\label{eq:form}
+\partial_t U + \nabla \cdot F\left( U \right) = S
+\end{equation}
+where $U$ is the vector solution, $F$ is a conservative vector flux and $S$ is a vector source that can contain some relaxation source terms and non-conservative terms. %\eqt{eq:form} will be used to recall some of the main features related to the finite element theory. \\
+In order to apply the continuous finite element method, \eqt{eq:form} is multiplied by a smooth test function $\phi$, integrated by part over each finite element $e$ of the discrete mesh $\Omega$ bounded by $\delta \Omega$, to obtain a weak solution:
+\begin{equation}
+\sum_e \int_{e} \partial_t U \phi - \sum_e \int_{\Omega} F(U) \cdot \nabla \phi + \int_{\delta \Omega} F(U) \phi - \sum_e \int_{\Omega} S \phi = 0
+\end{equation}
+The integrals over the elements $e$ are evaluated using quadrature points rule: trapezoidal and gauss rules. The time-dependent term will be evaluated using either the second-order temporal integrator BDF2, or the S-stable diagonally implicit Runge-Kutta methods (SDIRK) \cite{RK}. The boundary conditions will be treated by either using Dirichlet conditions, or Neumann conditions. The multi-D Euler equations are wave-dominated systems that require great care when dealing with boundary conditions. It is often recommended to use the characteristic equations to compute the correct flux at the boundaries. Our implementation of the boundary conditions will follow the method described in \cite{SEM}. \\
+The Moose framework makes available to us a wide range of test function and quadrature rules. It only includes the second-order temporal integrator so far: the Runge-Kutta methods will need to be implemented and tested.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proposed research:}
+Applying the entropy-based viscosity method is not an easy task and has to be done through a set of steps. Identifying and presenting these steps is the purpose of this section. For each system of equation presented in \sect{sec:section3}, a step-by-step process is proposed and inspired of what was done in the past for the multi-D Euler equations \cite{valentin, jlg}. The multi-D Euler equations will be treated first with a focus on a new expression for the entropy residual and an asymptotic study at low Mach.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The multi-D Euler equations:}
+\label{subset:euler_steps}
+ The entropy-based viscosity method was already successfully applied to the multi-D Euler equations with the IGEOS in \cite{jlg1, jlg2, valentin}. However, new developments in the theory extended the validity of the method to any equation of state \cite{jlg} which makes it a good candidate for nuclear reactor applications. 
+ Thus, the following axes of research are proposed:
+ \begin{itemize}
+ \item Express the entropy residual in terms of the pressure and the density variables: 
+\begin{equation}
+\label{eq:ent_res}
+D_e(\vec{r},t) = \partial_t s + \vec{u} \cdot \nabla s = \frac{s_e}{P_e} \left( \frac{d P}{dt} - c^2 \frac{d \rho}{dt} \right),
+\end{equation} 
+where $\frac{d \cdot}{dt}$ denotes the material or total derivative, and $P_e$ is the partial derivative of the pressure $P$ with respect to the internal energy $e$. \\
+The idea is to avoid computing an entropy function that can be difficult to obtain for complex equation of states. In addition, this formulation seems to be more suitable for the low Mach limit. In the \sect{sec:section1}, it was mentioned the importance of having well-scaled dissipative terms, allowing the numerical solution to converge to the physical solution. The current definition of the second-order viscosity coefficients (\eqt{eq:ent_visc_coeff}) seems to be un-adapted to the low Mach flow that are by definition isentropic: the entropy residual $D_e$ will be very small, so as the denominator $||s-\bar{s}||_{max}$, making the ratio undetermined. With the new expression of the entropy residual function of the pressure and the density, more diversity in the choice of the denominator is available to us such as either the pressure itself, or combination of the density, the speed of sound and the norm of the velocity: $\rho c^2$, $\rho c || \vec{u} ||$ and $\rho || \vec{u} ||^2$. An asymptotic study on the model of what is done in \cite{LowMach1, LowMach2, LowMach3} involving the dissipative terms should give us a theoretical justification for the denominator to use.
+\item Once a denominator or normalization parameter is found, the new formulation of the entropy-based viscosity method will need to be tested both with supersonic, transonic and subsonic flows. It is proposed to run some typical 1-D Sod shock tube tests \cite{Toro} and more challenging one (Leblanc shock tube \cite{Leblanc}), and compare the numerical simulations against the exact solution. Some 2-D simulations will be considered as well: Mach 3 forward facing step \cite{Mach3Step}, Riemann problem number 12 \cite{Riemann12}, compression corner \cite{CompressionCorner}, an explosion test \cite{Sodov} and some typical low Mach tests (flow around a bump \cite{Hump} and a cylinder. Running low Mach tests will allow us to validate the choice of the normalization parameter.  
+\item The research will also focus on the effect of the source terms on the entropy residual. It is expected that the steps in the derivation of the entropy residual remains the same, but extra terms will appear because of the physical source terms. What we need to look at is the sign of these new terms in order to understand how they affect the entropy production. This study will be limited to the 1-D case and will only account for the source terms described in \sect{subsec:euler}. 
+\item The multi-D Euler equations with variable area will be study as well. Because of the presence of the area $A$ and the non-conservative terms $P \nabla A$ in the momentum equation, the artificial dissipative terms need to be re-derived. This step should not be too complicated since the multi-D Euler equations with variable area yield almost the same entropy residual as the regular ones. Tests will be performed with a 1-D nozzle using the SGEOS \cite{SEM} for liquid water and steam. This test is interested in a sense that a steady-state is to be reached for both phases. The steam displays a steady-state shock after going through a transient, whereas the numerical solution for the liquid water is smooth and correspond to a low Mach situation. In both cases, an exact steady-state solution is available to us.
+\item Lastly, it is also proposed to run 1-D shock tests using the TEOS \cite{ShockTEOS}.
+ \end{itemize}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The seven equations model:}
+Applying the entropy-based viscosity method to the seven equations model seems to be challenging but is not hopeless. One of the key assumption in the derivation of this two-phases flow model, is that each phase obeys to the multi-D Euler equations. This observation motivates the subject of this proposal since the entropy-based viscosity method was successfully applied to the multi-D Euler equations. Thus, the theoretical approach proposed in \cite{jlg} to derive the dissipative terms should still be valid. The following progression is proposed similarly to what is done in \sect{subset:euler_steps}.
+\begin{itemize}
+\item The first step consists of deriving the dissipative terms using the entropy minimum principle theorem. It will be attempted to keep the derivation as general as possible with as few assumptions as possible. It is expected to obtain dissipative terms of the same type as the ones for the multi-D Euler equations since the mass, momentum and energy conservation equations for each phase are very similar to the ones of the multi-D Euler equations. The main difference relies in the void fraction equation that is required to derive the entropy conservation equation. More specifically, the void fraction becomes handy to recast the mass equation in function of the density $\rho_k$ instead of using the conservative variable $\rho_k \alpha_k A$. Thus, the mass equation and void fraction equation have a particular relationship that could be used in order to derive the dissipative terms.
+\item The next step will focus on the definition of the viscosity coefficients following the same reasoning as for the multi-D Euler equations in \sect{subset:euler_steps}. We still expect to have at least two viscosity coefficients $\mu_k$ and $\kappa_k$ for each phase. A third viscosity coefficient may be needed for the void fraction equation. It is chosen to keep distinct viscosity coefficients for the two phases since each phase can undergo different conditions: for example, the steam flow may be supersonic whereas the liquid phase will experience a subsonic flow.
+\item In order to validate this artificial viscosity method, it is proposed to run 1-D Sod shock tube \cite{1DShockSeven1} and also the same 1-D nozzle as in \cite{SEM}: it will be a good test to evaluate the capabilities of the entropy-based viscosity method to stabilize scheme while the two phases undergo mass, momentum and energy exchanges. We are also interested in running 2-D simulations that will validate our approach for the seven equations model \cite{1DShockSeven2}. 
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The 1-D grey radiation-hydrodynamic equations:}  
+The entropy-based viscosity method has never been applied to the radiation-hydrodynamic equations. This wave-dominated system of equations is currently solved using Riemann solver \cite{} . Developing a Riemann solver for this type of equations is not an easy task because of the relaxation source terms that can become dominant in the diffusion limit. Most of the methods avoid the difficulty by only studying the hyperbolic part of the system of equations:
+\begin{equation}
+\label{eq:rad-hydro2}
+\left\{
+\begin{array}{lll}
+\partial_t \left( \rho \right) + \nabla \left( \rho \vec{u} \right) = 0 \\
+\partial_t \left( \rho u\right) + \nabla \left(\rho \vec{u} \otimes \vec{u} + P + \frac{\epsilon}{3} \right) = 0 \\
+\partial_t \left( \rho E\right) + \nabla \left[ \vec{u} \left( \rho E + P \right) \right]  + \frac{\vec{u}}{3} \nabla \epsilon = 0\\
+\partial_t \epsilon + \frac{4}{3} \nabla \left( \vec{u} \epsilon \right) - \frac{\vec{u}}{3} \nabla \epsilon = 0
+\end{array}
+\right. ,
+\end{equation} 
+This is the approach we propose here, through the following steps:
+\begin{itemize}
+\item The first step will consist of deriving an entropy conservation equation for an entropy function $s$ without accounting for the dissipative terms. The entropy will be assumed function of the material density $\rho$, the material internal energy $e$ and the radiation density energy $\epsilon$. Then, the dissipative terms will need to be derived and the same process as described in \cite{jlg} will be followed using the entropy minimum principle theorem.
+\item The viscosity coefficients (they may be more than two viscosity coefficients) will have to be defined as well, on the same idea as for the multi-D Euler equations. The entropy residual function of the pressure, the density and the radiation energy density will be favored over the one function of the entropy $s$.
+\item Once the dissipative terms and the viscosity coefficients are defined, the effect of the method on the relaxation source terms $\sigma_a c \left( a T^4 - \epsilon \right)$ and the physical diffusion term $ \nabla \left( \frac{c}{3 \sigma_t} \nabla \epsilon \right)$ will need to be studied. \cite{{ShiJin}} studied the effect of various artificial viscosity methods onto the relaxation terms, showing the better accuracy obtained when using high-order viscosity methods. The entropy-based viscosity method is by definition of high-order and thus, may not affect the physical solution in the diffusion limit. The method of manufactured solution could be use to verify it.\\
+The radiation energy density equation will have a diffusive term and a numerical dissipative term with a vanishing viscosity coefficient. We will have to think of a consistent way to merge these two terms into one without modifying the physics and prevent oscillations from forming in the frozen in limit $(c_l / (3 \sigma_t)) \rightarrow 0$. 
+\item In order to demonstrate the high-order accuracy of the scheme, the method of manufactured solution will be used for both the diffusion and steaming limits. In \cite{EdwardsMorelKnoll}, manufactured solutions are available to us for those two cases.
+\item Then it is proposed to run 1-D tests only for Mach numbers ranging from $1.05$ to $50$ \cite{EdwardsMorelKnoll}. In each case, a steady-state solution is obtained. The Mach number $1.05$ corresponds to the diffusion limit: the numerical solution is smooth and the viscosity coefficient is expected to be of order $h^2$. For all of the others test cases, the steady-state solution contains a standing shock. The objective will be to assess the capability of the entropy-based viscosity method to resolve the shock and stabilize the numerical scheme without altering the physical solution. 
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\addcontentsline{toc}{section}{Bibliography}
+\begin{thebibliography}{46}
+
+ \bibitem{Hussaini}
+ \emph{Upwind and high-resolution schemes},
+ Hussaini MY, van Leer B, Van Rosendale J, Berlin: Springer, 1997.
+  
+    \bibitem{jlg1}
+  {\em Entropy viscosity method for nonlinear conservation laws}, 
+  Jean-Luc Guermond, R. Pasquetti, B. Popov, J. Comput. Phys., 230 (2011) 4248-4267.
+  
+  \bibitem{jlg2}
+  {\em Entropy Viscosity Method for High-Order Approximations of Conservation Laws}, 
+  J-L. Guermond, R. Pasquetti, 
+  Lecture Notes in Computational Science and Engineering, Springer, Volume 76, (2011) 411-418.
+
+ \bibitem{jlg3}
+ \emph{Entropy-based nonlinear viscosity for Fourrier approximations of conservation laws}, 
+ J.-L. Guermond, R. Pasquetti, C.R. Math. Acad. Sci. Paris 346 (2008) 801Ð806.
+
+% \bibitem{Leveque}
+% \emph{Numerical methods for conservation laws},
+% LeVeque RJ, Lectures in Mathematics, Basel: Birhauser, 1990
+
+  \bibitem{Neumann}
+  \emph{A method for the numerical calculation of hydrodynamic shocks}, 
+  J. von Neumann, R.D. Richtmyer, J. Appl. Phys. 21 (1950) 232Ð237
+  
+  \bibitem{Balsara}
+  \emph{An Analysis of the Hyperbolic Nature of the Equations of Radiation Hydrodynamics},
+  Dinshaw S. Balsara, J. Quant. Spectrosc. Radiat. Transfer, Vol. 61, No. 5, pp. 617-627, 1999.
+  
+  \bibitem{LowrieMorelHittinger}
+  \emph{The coupling of radiation and hydrodynamics},
+  Lowrie RB, Morel JE, Hittinger JA, 521 (1), 432-50 (1999).
+
+  \bibitem{FluxLimiter1}
+  \emph{Advanced numerical approximation of nonlinear hyperbolic equations}, 
+  B. Cockburn, C. Johnson, C. Shu, E. Tadmor, Lecture Notes in Mathematics, vol. 1697, Springer, 1998.
+  
+  \bibitem{FluxLimiter2}
+  \emph{Discontinuous Galerkin methods: theory, computation and applications}, 
+  B. Cockburn, G. Karniadakis, C. Shu, Lecture Notes in Computer Science and Engineering, vol. 11, Springer, 2000.
+  
+  \bibitem{FluxLimiter3}
+  \emph{The local discontinuous Galerkin method for time- dependent convection-diffusion systems}, 
+  B. Cockburn, C. Shu, SIAM J. Numer. Anal. 35 (1998) 2440Ð2463.
+  
+  %\bibitem{Woodward}
+  %\emph{Numerical simulations for radiation hydrodynamics. I. Diffusion limit}
+  %Dai W, Woodward PR, J. Comput Phys (1998), 142, 182-207.
+       
+%\bibitem{Hairer}
+%\emph{Solving ordinary differential equations II},
+%Second Revised ed., Springer Series in Computational Mathematics, Springer, New York, 2002.
+ 
+ \bibitem{EdwardsMorelKnoll}
+ \emph{Nonlinear variants of the TR$-$BDF$2$ method for thermal radiative diffusion},
+ Jarrods D. Edwards, Jim E. Morel, Dana A. Knoll, Journal of Computational Physics, 230 (2011), 1198-1214.
+ 
+  \bibitem{Toro}
+  \emph{Riemann Solvers and numerical methods for fluid dynamics.}
+  E.F. Toro, $2^{nd}$ Edition, Springer.  
+  
+  \bibitem{Reisner}
+  \emph{A space-time smooth artificial viscosity method for nonlinear conservation laws}
+  Reisner J., Serencsa J. and Shkoller S., Journal of Computational Physics 235 (2013) 912-933.
+    
+  \bibitem{valentin}
+  \emph{Implementation of the entropy viscosity method with the discontinuous Galerkin method},
+  Valentin Zingan, Jean-Luc Guermond, Jim Morel, Bojan Popov, Volume 253, 1 January 2013, Pages 479-490
+  
+ %\bibitem{entropy}
+ %\emph{E. Tadmor. A minimum entropy principle in the gas dynamics equations},
+  %Appl. Numer. Math., 2(3-5):211?219, 1986.
+    
+  \bibitem{LowrieMorel}
+  \emph{Issues with high-resolution Godunov methods for radiation hydrodynamics},
+  R.B. Lowrie, J.E. Morel, Journal of Quantitative Spectroscopy \& Radiative Transfer, 69, 475-489 (2001).
+  
+%\bibitem{Lax}
+%\emph{Weak solutions of nonlinear hyperbolic equations and their numerical computation},
+%P. Lax, Comm. Pure Appl. Math., 7:159-193, 1954.
+
+%\bibitem{Evans}
+%\emph{Numerical approximations of hyperbolic systems of conservation laws},
+%E. Godlewski and P.-A. Raviart, volume 118 of Applied Mathematical Sciences. Springer-Verlag, New York, 1996. ISBN 0-387-94529-6.
+
+\bibitem{EdwardsMorelLowrie}
+\emph{Second-Order Discretization in Space and Time for Radiation Hydrodynamics},
+Jarrod D. Edwards, Jim E. Morel, Robert B. Lowrie, International Conference on Mathematics and Computational Methods Applied to Nuclear Science \& Engineering (M\&C 2013), Sun Valley, Idaho USA, May 5-9, American Nuclear Society, LaGrange Park, II (2013).
+   
+  \bibitem{ShiJin}
+  \emph{Numerical Schemes for Hyperbolic Conservation Laws with Stiff Relaxation Terms}, 
+  Shi Jin and C. David Levermore, Journal of Computational Physics, 126, 449-467 (1996).
+  
+  \bibitem{jlg}
+  \emph{Viscous regularization of the Euler equations and entropy principles},
+  Jean-Luc Guermond and Bojan Popov, under review.
+  
+  \bibitem{Moose}
+  \emph{A parallel computational framework for coupled systems of nonlinear equations},
+  D. Gaston, C. Newsman, G. Hansen and D. Lebrun-Grandie, Nucl. Eng. Design, vol 239, pp 1768-1778, 2009.
+  
+  \bibitem{RK}
+  \emph{Strong stability of singly-diagonally-implicit Runge Kutta methods},
+  Ferracina L. and Spijker M. N., Applied Numerical Mathematiics, 58 (2008) 1675-1686.
+  
+  \bibitem{Martineau}
+  \emph{The PCICE-FEM scheme for highly compressible axisymmetric flows},
+  Martineau R., Computer \& Fluids, 36 (2007) 1259Ð1272.
+  
+  \bibitem{Sodov}
+  \emph{Similarity and dimensional methods in mechanics},
+  Sedov LI., New York: Academic Press, 1959.
+  
+  \bibitem{RatTherm}
+  \emph{Rational thermodynamics},
+  Truesdell C. and Wang C.-C., New York, McGraw-Hill Book Company, 1969, XII. 208 S.
+ 
+  \bibitem{Parabolic}
+  \emph{On positivity preserving finite volume schemes for Euler equations},
+  Perthane B. and Shu C-W., Numer. Math., 73(1):119-130, 1996.
+  
+  \bibitem{EeHan}
+  {Exact Riemann Solutions to Compressible Euler Equations in Ducts with Discontinuous Cross-Section},
+  Ee Han, Maren Hantke, and Gerald Warnecke, under review.
+  
+  \bibitem{IGEOS}
+  \emph{A to Z of Thermodynamics},
+  Perrot P., Oxford University Press (1998).
+  
+  \bibitem{SGEOS}
+  \emph{Elaborating equation of state for a liquid and its vapor for two-phase flow models.}
+  O. LeMetayer, J. Massoni, R. Saurel, International Journal of Thermal Science 43 (2004) 265-276.
+  
+    \bibitem{Tait}
+  \emph{Compressible Fluid Dynamics},
+  P.A. Thompson, McGraw-Hill (1972).
+
+  \bibitem{Lapidus_paper}
+  \emph{A detached shock calculation by second order finite differences},
+  Lapidus A., J. Comput. Phys., 2, 154-177.
+
+  \bibitem{LMP}
+  \emph{A simple extension to multidimensional problems of the artificial viscosity due to Lapidus},
+  Lohner R., Morgan K. and Peraire J., Commun. Numer. Methods Eng., 1(14), 141-147.
+      
+  \bibitem{Lapidus_book}
+  \emph{Finite Element Methods for Flow Problems},
+  Jean Donea and Antonio Huerta, 2003,  Edition, Wiley.
+  
+  \bibitem{PBV_book}
+  \emph{Applied CFD Techniques: an Introduction based on Finite Element Methods},
+  Rainald Lohner, $2^{nd}$ Edition, Wiley.
+  
+  \bibitem{Roe}
+  \emph{An All-Speed Roe-type scheme and its asymptotic analysis of low Mach number behavior},
+  Xue-song Li, Chun-wei Gu, Journal of Computational Physics 227 (2008) 5144-5159
+  
+  \bibitem{LowMach1}
+  \emph{On the behavior of upwind schemes in the low Mach number limit},
+  Guillard H., Viozat C., Computers \& Fluids 28 (1999) 63-86.
+  
+  \bibitem{LowMach2}
+  \emph{Preconditioned techniques in computational fluid dynamics.}
+  E.Turkel, Annu. Rev. Fluid Mech. (1999) 31:385-416.  
+  
+  \bibitem{LowMach3}
+  \emph{The solution of the compressible Euler equations at low Mach numbers using a stabilized finite element algorithm},
+  J. S. Wong, D.L. Darmofal, J. Peraire, Comput. Methods Appl. Mech. Engrg. 190 (2001) 5719-5737.
+  
+  \bibitem{Muller}
+  \emph{Low-Mach number asymptotes of the Navier-Stokes equations},
+  Muller B., Journal of Engineering Mathematics 34: 97-109, 1998.
+  
+  \bibitem{SEM}
+  \emph{The discrete equation method (DEM) for fully compressible, two-phase flows in ducts of spatially varying cross-section.}
+  R. Berry, R. Saurel, O. LeMetayer,
+  Nuclear Engineering and Design, 240 (2010) 3797-3818.
+  
+  \bibitem{Riemann12}
+  \emph{Comparison of several difference schemes on 1D and 2D test problems for the Euler equations}, 
+  R. Liska, B. Wendroff, SIAM J. Sci. Comput. 25 (3) (2003) 995Ð 1017 (electronic).
+  
+  \bibitem{Mach3Step}
+  \emph{An evaluation of several differencing methods for inviscid fluid flow problems}, 
+  A.F. Emery, J. Comput. Phys. 2 (1968) 306Ð331.
+  
+  \bibitem{CompressionCorner}
+  \emph{Modern Compressible Flow}, 
+  Anderson, J.D. (1982), McGraw Hill Inc., New York. ASME (2006). V\&V 10-2006 Guide for Verification and Validation in Computational Solid
+Mechanic.
+  
+  \bibitem{Hump}
+  \emph{A Robust Multigrid Algorithm for the Euler Equations with Local Preconditioning and Semi-coarsening},
+  D. L. Darmofal and K. Siu, Journal of Computational Physics 151, 728Ð756 (1999).
+  
+  \bibitem{Leblanc}
+  \emph{Validation Test Case Suite for compressible hydrodynamics computation},
+  Loubere R., Theoritical Division, T-7, Los Alamos National Laboratory (pdf version).
+  
+  \bibitem{1DShockSeven1}
+  \emph{Modelling of Two-Phase Flow with Second-Order Accurate Scheme},
+  Iztok Tiselj, Stojan Petelin, Journal of Computational Physics, Volume 136, Issue 2, 15 September 1997, Pages 503Ð521.
+  
+  \bibitem{1DShockSeven2}
+  \emph{A Simple Method for Compressible Multi-fluid Flows},
+  Richard Saurel and RŽmi Abgrall, SIAM J. Sci. Comput., 21(3), 1115Ð1145.
+  
+  \bibitem{ShockTEOS}
+  \emph{A New Averaging Scheme for the Riemann Problem in Pure Water},
+  Tze-Jang Chen, C. H. Cooke, Mathl. Comput. Modeling Vol. 25 No. 3, pp. 25-36, 1997.
+  
+  \end{thebibliography}
+\end{document}
